@@ -1,22 +1,14 @@
-
 import streamlit as st
-import psycopg2
+from supabase import create_client, Client
 import datetime
-from psycopg2.extras import Json
 
 st.set_page_config(page_title="Mwanza Irrigation Data Tool", layout="centered")
-
 st.title("🌿 Mwanza Irrigation Data Collection & Monitoring Tool")
 
-# Database connection using Streamlit secrets
-def get_connection():
-    return psycopg2.connect(
-        host=st.secrets["db_host"],
-        database=st.secrets["db_name"],
-        user=st.secrets["db_user"],
-        password=st.secrets["db_password"],
-        port=st.secrets["db_port"]
-    )
+# Supabase credentials
+SUPABASE_URL = "https://xxleyvsegkkszvevzskh.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh4bGV5dnNlZ2trc3p2ZXZ6c2toIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NzgxMjA4NCwiZXhwIjoyMDYzMzg4MDg0fQ.xYs_H7X-ZC1oHhG6S0Q46Wql6X7gY4UzYih-8l5vbyk"
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Form UI
 with st.form("irrigation_form"):
@@ -63,32 +55,38 @@ with st.form("irrigation_form"):
 
     if submitted:
         try:
-            conn = get_connection()
-            cur = conn.cursor()
-            cur.execute("""
-                INSERT INTO irrigation_data (
-                    epa_name, section, visit_date, scheme_name,
-                    gps_easting, gps_northing, project_name,
-                    financial_year, quarter, month,
-                    male_beneficiaries, female_beneficiaries, total_beneficiaries,
-                    potential_area_ha, developed_area_ha, actual_area_ha, new_developed_ha,
-                    water_sources, irrigation_systems,
-                    area_1_cycle, area_2_cycle, area_3_cycle, area_4_cycle,
-                    challenges, solutions
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """,
-            (
-                epa, section, visit_date, scheme_name, gps_e, gps_n,
-                project_name, financial_year, quarter, month,
-                male, female, total,
-                potential, developed, actual, newly,
-                water_sources, systems,
-                area_1, area_2, area_3, area_4,
-                challenges, solutions
-            ))
-            conn.commit()
-            cur.close()
-            conn.close()
-            st.success("✅ Data submitted successfully!")
+            response = supabase.table("irrigation_data").insert({
+                "epa_name": epa,
+                "section": section,
+                "visit_date": str(visit_date),
+                "scheme_name": scheme_name,
+                "gps_easting": gps_e,
+                "gps_northing": gps_n,
+                "project_name": project_name,
+                "financial_year": financial_year,
+                "quarter": quarter,
+                "month": month,
+                "male_beneficiaries": male,
+                "female_beneficiaries": female,
+                "total_beneficiaries": total,
+                "potential_area_ha": potential,
+                "developed_area_ha": developed,
+                "actual_area_ha": actual,
+                "new_developed_ha": newly,
+                "water_sources": water_sources,
+                "irrigation_systems": systems,
+                "area_1_cycle": area_1,
+                "area_2_cycle": area_2,
+                "area_3_cycle": area_3,
+                "area_4_cycle": area_4,
+                "challenges": challenges,
+                "solutions": solutions
+            }).execute()
+
+            if response.data:
+                st.success("✅ Data submitted successfully!")
+            else:
+                st.error(f"❌ Error submitting data: {response.error}")
+
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"⚠️ Submission failed: {e}")
